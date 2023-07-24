@@ -21,8 +21,11 @@ io.on('connection', (socket) => {
   });
 
   socket.on('updatePosition', (data) => {
-    players[socket.id].x = data.x;
-    players[socket.id].y = data.y;
+    const tileSize = 50;
+    const roundedX = Math.floor(data.x / tileSize) * tileSize;
+    const roundedY = Math.floor(data.y / tileSize) * tileSize;
+    players[socket.id].x = roundedX;
+    players[socket.id].y = roundedY;
     io.emit('allPlayers', players);
   });
 

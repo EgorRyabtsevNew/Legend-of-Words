@@ -2,8 +2,8 @@ const socket = io();
 
 const stage = new Konva.Stage({
   container: 'container',
-  width: 500,
-  height: 500
+  width: window.innerWidth,
+  height: window.innerHeight
 });
 
 const layer = new Konva.Layer();
@@ -42,6 +42,9 @@ function updatePlayers() {
 }
 
 stage.on('click', (e) => {
+  const tileSize = 50; 
   const pos = stage.getPointerPosition();
-  socket.emit('updatePosition', { x: pos.x, y: pos.y });
+  const roundedX = Math.floor(pos.x / tileSize) * tileSize;
+  const roundedY = Math.floor(pos.y / tileSize) * tileSize;
+  socket.emit('updatePosition', { x: roundedX, y: roundedY });
 });
