@@ -20,12 +20,9 @@ io.on('connection', (socket) => {
     io.emit('allPlayers', players);
   });
 
-  socket.on('updatePosition', (data) => {
-    const tileSize = 50;
-    const roundedX = Math.floor(data.x / tileSize) * tileSize;
-    const roundedY = Math.floor(data.y / tileSize) * tileSize;
-    players[socket.id].x = roundedX;
-    players[socket.id].y = roundedY;
+  socket.on('move', (data) => {
+    players[socket.id].x = data.x;
+    players[socket.id].y = data.y;
     io.emit('allPlayers', players);
   });
 

@@ -30,6 +30,11 @@ stage.on('mousedown', (e) => {
   if (e.evt.button === 0) {
     isDragging = true;
     lastPointerPosition = stage.getPointerPosition();
+    const actionMenu = layer.findOne('.konvajs-label');
+    if (actionMenu) {
+      actionMenu.destroy();
+      layer.draw();
+    }
   }
 });
 
@@ -60,27 +65,6 @@ stage.on('mousemove', (e) => {
 });
 
 let selectedTile = null;
-let mousePressStartTime = 0;
-
-stage.on('mousedown', (e) => {
-  if (e.evt.button === 0) {
-    mousePressStartTime = Date.now();
-  }
-});
-
-stage.on('mouseup', (e) => {
-  if (Date.now() - mousePressStartTime > 500) {
-    const pos = stage.getPointerPosition();
-    const roundedX = Math.floor(pos.x / tileSize) * tileSize;
-    const roundedY = Math.floor(pos.y / tileSize) * tileSize;
-    selectedTile = { x: roundedX, y: roundedY };
-    const action = prompt('Select an action: Move');
-    if (action && action.toLowerCase() === 'move') {
-      socket.emit('updatePosition', { x: selectedTile.x, y: selectedTile.y });
-    }
-  }
-  mousePressStartTime = 0;
-});
 
 const urlParams = new URLSearchParams(window.location.search);
 const nickname = urlParams.get('nickname');
@@ -153,8 +137,71 @@ function updatePlayers() {
 }
 
 stage.on('click', (e) => {
-  const pos = stage.getPointerPosition();
-  const roundedX = Math.floor(pos.x / tileSize) * tileSize;
-  const roundedY = Math.floor(pos.y / tileSize) * tileSize;
-  socket.emit('updatePosition', { x: roundedX, y: roundedY });
+  if (!isDragging) {
+    const actionMenu = layer.findOne('.konvajs-label');
+    if (actionMenu) {
+      actionMenu.destroy();
+      layer.draw();
+    }
+
+    const pos = stage.getPointerPosition();
+    const roundedX = Math.floor(pos.x / tileSize) * tileSize;
+    const roundedY = Math.floor(pos.y / tileSize) * tileSize;
+
+    selectedTile = { x: roundedX, y: roundedY };
+
+    setTimeout(() => {
+      showActionMenu(selectedTile);
+      highlightTile(selectedTile);
+    }, 100);
+  }
 });
+
+function showActionMenu(tile) {
+  const actionMenu = new Konva.Label({
+    x: tile.x + tileSize / 2,
+    y: tile.y + tileSize / 2,
+    opacity: 0.75,
+  });
+
+  actionMenu.add(
+    new Konva.Tag({
+      fill: 'black',
+    })
+  );
+
+  actionMenu.add(
+    new Konva.Text({
+      text: 'Move here',
+      fontFamily: 'Calibri',
+      fontSize: 18,
+      padding: 5,
+      fill: 'white',
+    })
+  );
+
+  actionMenu.on('click', function() {
+    socket.emit('move', {x: tile.x, y: tile.y});
+    actionMenu.destroy();
+    layer.draw();
+  });
+
+  layer.add(actionMenu);
+  layer.draw();
+}
+
+function highlightTile(tile) {
+  layer.getChildren(n => n.name() === 'highlight').forEach(node => node.destroy());
+
+  const rect = new Konva.Rect({
+    x: tile.x,
+    y: tile.y,
+    width: tileSize,
+    height: tileSize,
+    stroke: 'yellow',
+    strokeWidth: 3,
+    name: 'highlight',
+  });
+  layer.add(rect);
+  layer.draw();
+}
