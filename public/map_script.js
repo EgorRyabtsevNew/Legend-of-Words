@@ -25,6 +25,7 @@ const totalMapHeight = mapHeight + window.innerHeight;
 
 let isDragging = false;
 let lastPointerPosition;
+let actionMenuTimer;
 
 stage.on('mousedown', (e) => {
   if (e.evt.button === 0) {
@@ -65,6 +66,7 @@ stage.on('mousemove', (e) => {
 });
 
 let selectedTile = null;
+let actionMenu = null;
 
 const urlParams = new URLSearchParams(window.location.search);
 const nickname = urlParams.get('nickname');
@@ -137,20 +139,23 @@ function updatePlayers() {
 }
 
 stage.on('click', (e) => {
-  if (!isDragging) {
-    const actionMenu = layer.findOne('.konvajs-label');
-    if (actionMenu) {
-      actionMenu.destroy();
-      layer.draw();
-    }
+  const oldActionMenu = layer.findOne('.konvajs-label');
+  if (oldActionMenu) {
+    oldActionMenu.destroy();
+  }
 
+  if (!isDragging) {
     const pos = stage.getPointerPosition();
-    const roundedX = Math.floor(pos.x / tileSize) * tileSize;
-    const roundedY = Math.floor(pos.y / tileSize) * tileSize;
+    const roundedX = Math.floor((pos.x - stage.x()) / tileSize) * tileSize;
+    const roundedY = Math.floor((pos.y - stage.y()) / tileSize) * tileSize;
 
     selectedTile = { x: roundedX, y: roundedY };
 
-    setTimeout(() => {
+    if (actionMenuTimer) {
+      clearTimeout(actionMenuTimer);
+    }
+
+    actionMenuTimer = setTimeout(() => {
       showActionMenu(selectedTile);
       highlightTile(selectedTile);
     }, 100);
@@ -158,9 +163,22 @@ stage.on('click', (e) => {
 });
 
 function showActionMenu(tile) {
-  const actionMenu = new Konva.Label({
-    x: tile.x + tileSize / 2,
-    y: tile.y + tileSize / 2,
+  if (actionMenu) {
+    actionMenu.destroy();
+  }
+
+  const menuWidth = 120;
+  const menuHeight = 30;
+
+  const tileCenterX = tile.x + tileSize / 2;
+  const tileBottomY = tile.y + tileSize;
+
+  let x = tileCenterX - menuWidth / 2 + 14;
+  let y = tileBottomY + menuHeight / 2 - 10;
+
+  actionMenu = new Konva.Label({
+    x: x,
+    y: y,
     opacity: 0.75,
   });
 
@@ -181,7 +199,7 @@ function showActionMenu(tile) {
   );
 
   actionMenu.on('click', function() {
-    socket.emit('move', {x: tile.x, y: tile.y});
+    socket.emit('move', { x: tile.x, y: tile.y });
     actionMenu.destroy();
     layer.draw();
   });
