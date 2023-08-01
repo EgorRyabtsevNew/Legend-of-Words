@@ -1,11 +1,13 @@
 const express = require('express');
 const http = require('http');
 const socketIO = require('socket.io');
+const config = require('./config');
+const path = require('path');
 const app = express();
 const server = http.createServer(app);
 const io = socketIO(server);
 
-app.use(express.static(__dirname + '/public'));
+app.use(express.static(path.join(__dirname, 'public')));
 
 const players = {};
 
@@ -36,6 +38,6 @@ function getRandomColor() {
   return '#' + Math.floor(Math.random() * 16777215).toString(16);
 }
 
-server.listen(3000, () => {
-  console.log('Server started on http://localhost:3000');
+server.listen(config.port, () => {
+  console.log(`Server started idk try it`);
 });
