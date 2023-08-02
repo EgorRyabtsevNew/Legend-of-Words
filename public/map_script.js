@@ -12,8 +12,8 @@ stage.add(layer);
 let players = {};
 
 const tileSize = 50;
-const mapWidthInTiles = 50;
-const mapHeightInTiles = 50;
+const mapWidthInTiles = 100;
+const mapHeightInTiles = 100;
 const borderWidth = 5;
 const mapWidth = mapWidthInTiles * tileSize;
 const mapHeight = mapHeightInTiles * tileSize;
@@ -81,7 +81,7 @@ socket.on('allPlayers', (data) => {
 
 function drawTileBorders() {
   const lineAttrs = {
-    stroke: 'black',
+    stroke: 'rgba(0, 0, 0, 0)',
     strokeWidth: 1,
   };
 
