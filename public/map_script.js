@@ -1,225 +1,42 @@
-const socket = io();
+fetch('/map_data.json')
+  .then((response) => response.json())
+  .then((data) => {
+    drawMap(data);
+  })
+  .catch((error) => console.error('Error fetching map data:', error));
 
-const stage = new Konva.Stage({
-  container: 'container',
-  width: window.innerWidth,
-  height: window.innerHeight,
-});
+function drawMap(mapData) {
+  const container = document.getElementById('container');
+  const stage = new Konva.Stage({
+    container: 'container',
+    width: 800,
+    height: 600,
+  });
+  const layer = new Konva.Layer();
 
-const layer = new Konva.Layer();
-stage.add(layer);
-
-let players = {};
-
-const tileSize = 50;
-const mapWidthInTiles = 100;
-const mapHeightInTiles = 100;
-const borderWidth = 5;
-const mapWidth = mapWidthInTiles * tileSize;
-const mapHeight = mapHeightInTiles * tileSize;
-const mapBorderWidth = borderWidth / 2;
-const mapBorderColor = 'black';
-
-const totalMapWidth = mapWidth + window.innerWidth;
-const totalMapHeight = mapHeight + window.innerHeight;
-
-let isDragging = false;
-let lastPointerPosition;
-let actionMenuTimer;
-
-stage.on('mousedown', (e) => {
-  if (e.evt.button === 0) {
-    isDragging = true;
-    lastPointerPosition = stage.getPointerPosition();
-    const actionMenu = layer.findOne('.konvajs-label');
-    if (actionMenu) {
-      actionMenu.destroy();
-      layer.draw();
-    }
-  }
-});
-
-stage.on('mouseup', () => {
-  isDragging = false;
-});
-
-stage.on('mousemove', (e) => {
-  if (isDragging) {
-    const dx = e.evt.clientX - lastPointerPosition.x;
-    const dy = e.evt.clientY - lastPointerPosition.y;
-    const newX = stage.x() + dx;
-    const newY = stage.y() + dy;
-
-    const minX = window.innerWidth - mapWidth;
-    const minY = window.innerHeight - mapHeight;
-    const maxX = 0;
-    const maxY = 0;
-
-    stage.position({
-      x: Math.min(maxX, Math.max(minX, newX)),
-      y: Math.min(maxY, Math.max(minY, newY)),
+  mapData.forEach((tileData) => {
+    const { id, type } = tileData;
+    const [x, y] = id.split('-').map(Number);
+    const rect = new Konva.Rect({
+      x: x * 50,
+      y: y * 50,
+      width: 51,
+      height: 51,
+      fill: getTileColor(type),
     });
-
-    lastPointerPosition = stage.getPointerPosition();
-    layer.draw();
-  }
-});
-
-let selectedTile = null;
-let actionMenu = null;
-
-const urlParams = new URLSearchParams(window.location.search);
-const nickname = urlParams.get('nickname');
-if (nickname) {
-  socket.emit('newPlayer', nickname);
-}
-
-socket.on('allPlayers', (data) => {
-  players = data;
-  updatePlayers();
-});
-
-function drawTileBorders() {
-  const lineAttrs = {
-    stroke: 'rgba(0, 0, 0, 0)',
-    strokeWidth: 1,
-  };
-
-  for (let x = 0; x <= mapWidth; x += tileSize) {
-    const line = new Konva.Line({
-      points: [x, 0, x, mapHeight],
-      ...lineAttrs,
-    });
-    layer.add(line);
-  }
-
-  for (let y = 0; y <= mapHeight; y += tileSize) {
-    const line = new Konva.Line({
-      points: [0, y, mapWidth, y],
-      ...lineAttrs,
-    });
-    layer.add(line);
-  }
-}
-
-function drawMapBorder() {
-  const rect = new Konva.Rect({
-    x: mapBorderWidth,
-    y: mapBorderWidth,
-    width: mapWidth - borderWidth,
-    height: mapHeight - borderWidth + mapBorderWidth,
-    stroke: mapBorderColor,
-    strokeWidth: borderWidth,
-  });
-  layer.add(rect);
-}
-
-function updatePlayers() {
-  layer.destroyChildren();
-  drawTileBorders();
-  drawMapBorder();
-
-  Object.keys(players).forEach((playerId) => {
-    const player = players[playerId];
-
-    const x = Math.min((Math.floor(player.x / tileSize) + 0.5) * tileSize, mapWidth - 20);
-    const y = Math.min((Math.floor(player.y / tileSize) + 0.5) * tileSize, mapHeight - 20);
-
-    const circle = new Konva.Circle({
-      x,
-      y,
-      radius: 10,
-      fill: player.color,
-    });
-
-    layer.add(circle);
+    layer.add(rect);
   });
 
-  layer.draw();
+  stage.add(layer);
 }
 
-stage.on('click', (e) => {
-  const oldActionMenu = layer.findOne('.konvajs-label');
-  if (oldActionMenu) {
-    oldActionMenu.destroy();
+function getTileColor(type) {
+  switch (type) {
+    case 'plain':
+      return 'palegreen'; 
+    case 'water':
+      return 'lightblue';
+    default:
+      return 'limegreen';
   }
-
-  if (!isDragging) {
-    const pos = stage.getPointerPosition();
-    const roundedX = Math.floor((pos.x - stage.x()) / tileSize) * tileSize;
-    const roundedY = Math.floor((pos.y - stage.y()) / tileSize) * tileSize;
-
-    selectedTile = { x: roundedX, y: roundedY };
-
-    if (actionMenuTimer) {
-      clearTimeout(actionMenuTimer);
-    }
-
-    actionMenuTimer = setTimeout(() => {
-      showActionMenu(selectedTile);
-      highlightTile(selectedTile);
-    }, 100);
-  }
-});
-
-function showActionMenu(tile) {
-  if (actionMenu) {
-    actionMenu.destroy();
-  }
-
-  const menuWidth = 120;
-  const menuHeight = 30;
-
-  const tileCenterX = tile.x + tileSize / 2;
-  const tileBottomY = tile.y + tileSize;
-
-  let x = tileCenterX - menuWidth / 2 + 14;
-  let y = tileBottomY + menuHeight / 2 - 10;
-
-  actionMenu = new Konva.Label({
-    x: x,
-    y: y,
-    opacity: 0.75,
-  });
-
-  actionMenu.add(
-    new Konva.Tag({
-      fill: 'black',
-    })
-  );
-
-  actionMenu.add(
-    new Konva.Text({
-      text: 'Move here',
-      fontFamily: 'Calibri',
-      fontSize: 18,
-      padding: 5,
-      fill: 'white',
-    })
-  );
-
-  actionMenu.on('click', function() {
-    socket.emit('move', { x: tile.x, y: tile.y });
-    actionMenu.destroy();
-    layer.draw();
-  });
-
-  layer.add(actionMenu);
-  layer.draw();
-}
-
-function highlightTile(tile) {
-  layer.getChildren(n => n.name() === 'highlight').forEach(node => node.destroy());
-
-  const rect = new Konva.Rect({
-    x: tile.x,
-    y: tile.y,
-    width: tileSize,
-    height: tileSize,
-    stroke: 'yellow',
-    strokeWidth: 3,
-    name: 'highlight',
-  });
-  layer.add(rect);
-  layer.draw();
 }
